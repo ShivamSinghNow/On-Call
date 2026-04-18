@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "Voice Bridge",
+    "slug": "voice-bridge",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.voicebridge.app",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Voice Bridge needs the microphone so you can speak to your Claude Code session."
+      }
+    },
+    "android": {
+      "package": "com.voicebridge.app",
+      "permissions": ["RECORD_AUDIO"]
+    },
+    "plugins": [
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Voice Bridge needs the microphone so you can speak to your Claude Code session."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {}
+    }
+  }
+}

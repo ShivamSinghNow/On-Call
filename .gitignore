@@ -1,0 +1,15 @@
+node_modules/
+.pnpm-store/
+dist/
+.env
+.env.local
+.env.*.local
+.DS_Store
+*.log
+.expo/
+.expo-shared/
+ios/
+android/
+coverage/
+.turbo/
+.cache/
