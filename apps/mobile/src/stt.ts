@@ -3,6 +3,7 @@ import { CactusSTT } from "cactus-react-native";
 export interface SttEngine {
   init(onProgress?: (ratio: number) => void): Promise<void>;
   transcribe(fileUri: string): Promise<string>;
+  transcribePcm(pcm: number[]): Promise<string>;
 }
 
 /**
@@ -38,6 +39,18 @@ class CactusSttEngine implements SttEngine {
     });
 
     return this.readyPromise;
+  }
+
+  async transcribePcm(pcm: number[]): Promise<string> {
+    if (!this.engine) {
+      throw new Error("STT not initialized. Call init() first.");
+    }
+    const result = await this.engine.transcribe({
+      audio: pcm,
+      options: { maxTokens: 256, useVad: false },
+    });
+    if (!result.success) throw new Error("Transcription failed");
+    return result.response;
   }
 
   async transcribe(fileUri: string): Promise<string> {

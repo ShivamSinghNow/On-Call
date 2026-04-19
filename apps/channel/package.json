@@ -1,0 +1,12 @@
+{
+  "name": "@voice-bridge/channel",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "bun run server.ts",
+    "dev": "bun --watch run server.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0"
+  }
+}

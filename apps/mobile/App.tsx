@@ -8,6 +8,7 @@ import { Recorder } from "./src/recording";
 import { stt } from "./src/stt";
 import { tts } from "./src/tts";
 import { ask, type AskHandle } from "./src/ask";
+import { connectTwilioCallHandler } from "./src/twilio-call";
 
 export default function App() {
   const [state, setState] = useState<AppState>(initialState);
@@ -19,12 +20,17 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false;
+    let disconnectTwilio: (() => void) | null = null;
+
     (async () => {
       try {
         await stt.init((ratio) => {
           if (!cancelled) setModelProgress(ratio);
         });
-        if (!cancelled) setModelReady(true);
+        if (!cancelled) {
+          setModelReady(true);
+          disconnectTwilio = connectTwilioCallHandler();
+        }
       } catch (err) {
         if (!cancelled)
           setState({
@@ -33,10 +39,12 @@ export default function App() {
           });
       }
     })();
+
     return () => {
       cancelled = true;
       askHandleRef.current?.cancel();
       void tts.stop();
+      disconnectTwilio?.();
     };
   }, []);
 

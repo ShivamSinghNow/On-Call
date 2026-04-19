@@ -4,7 +4,7 @@
   "private": true,
   "description": "Voice Bridge MVP: React Native app -> on-device Cactus/Gemma STT -> Node bridge -> Telegram/Claude Code -> on-device TTS",
   "scripts": {
-    "bridge": "pnpm --filter @voice-bridge/bridge dev",
+    "channel": "pnpm --filter @voice-bridge/channel dev",
     "mobile": "pnpm --filter @voice-bridge/mobile start",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",

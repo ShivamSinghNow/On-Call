@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "voice": {
+      "command": "/Users/varunvenkatesh/.bun/bin/bun",
+      "args": ["run", "./apps/channel/server.ts"]
+    }
+  }
+}
