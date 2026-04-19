@@ -8,8 +8,8 @@ dist/
 *.log
 .expo/
 .expo-shared/
-ios/
-android/
+apps/mobile/ios/
+apps/mobile/android/
 coverage/
 .turbo/
 .cache/
