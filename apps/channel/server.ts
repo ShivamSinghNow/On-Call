@@ -23,6 +23,9 @@ const pendingTwilio = new Map<string, { callSid: string; replyText: string }>();
 // Phone WebSocket — the React Native app connects here
 let phoneWs: { send: (msg: object) => void } | null = null;
 
+// iOS WebSocket — the Swift app connects here for callback notifications
+let iosWs: { send: (msg: object) => void } | null = null;
+
 // Active Twilio media streams keyed by streamSid
 interface TwilioStreamState {
   callSid: string;
@@ -109,6 +112,12 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
       await respondToTwilioCall(callSid, replyText).catch(console.error);
     }
     return { content: [{ type: "text", text: "sent" }] };
+  }
+
+  // Route to iOS app as a callback notification
+  if (is_final && iosWs) {
+    iosWs.send({ type: "callback", chat_id, text });
+    return { content: [{ type: "text", text: "sent to ios" }] };
   }
 
   return { content: [{ type: "text", text: "no pending connection" }] };
@@ -333,7 +342,7 @@ async function handleHttp(req: Request): Promise<Response> {
 
 // --- Bun HTTP + WebSocket Server ---
 interface WsData {
-  type: "twilio" | "phone";
+  type: "twilio" | "phone" | "ios";
 }
 
 Bun.serve<WsData>({
@@ -352,6 +361,10 @@ Bun.serve<WsData>({
       if (server.upgrade(req, { data: { type: "phone" } })) return undefined;
     }
 
+    if (url.pathname === "/ios/stream") {
+      if (server.upgrade(req, { data: { type: "ios" } })) return undefined;
+    }
+
     return handleHttp(req);
   },
 
@@ -359,6 +372,9 @@ Bun.serve<WsData>({
     open(ws) {
       if (ws.data.type === "phone") {
         phoneWs = { send: (msg) => ws.send(JSON.stringify(msg)) };
+      } else if (ws.data.type === "ios") {
+        iosWs = { send: (msg) => ws.send(JSON.stringify(msg)) };
+        console.log("[ios] connected");
       }
     },
 
@@ -374,6 +390,9 @@ Bun.serve<WsData>({
     close(ws) {
       if (ws.data.type === "phone") {
         phoneWs = null;
+      } else if (ws.data.type === "ios") {
+        iosWs = null;
+        console.log("[ios] disconnected");
       }
     },
   },
