@@ -298,37 +298,34 @@ async function handleHttp(req: Request): Promise<Response> {
     if (!callId || !text) return new Response("bad request", { status: 400 });
     if (pendingSSE.has(callId)) return new Response("conflict", { status: 409 });
 
-    const stream = new ReadableStream({
-      start(ctrl) {
-        const enc = new TextEncoder();
-        const emit = (event: string, data: string) => {
-          ctrl.enqueue(enc.encode(`event: ${event}\ndata: ${data}\n\n`));
-          if (event === "done" || event === "error") ctrl.close();
-        };
+    const response = await new Promise<string>((resolve, reject) => {
+      let accumulated = "";
 
-        pendingSSE.set(callId, emit);
+      const emit = (event: string, data: string) => {
+        if (event === "token") accumulated += data;
+        if (event === "done") resolve(accumulated);
+        if (event === "error") reject(new Error(data));
+      };
 
-        mcp
-          .notification({
-            method: "notifications/claude/channel",
-            params: { content: text, meta: { chat_id: callId } },
-          })
-          .catch((err) => {
-            emit("error", err instanceof Error ? err.message : String(err));
-            pendingSSE.delete(callId);
-          });
+      pendingSSE.set(callId, emit);
 
-        req.signal.addEventListener("abort", () => pendingSSE.delete(callId));
-      },
+      mcp
+        .notification({
+          method: "notifications/claude/channel",
+          params: { content: text, meta: { chat_id: callId } },
+        })
+        .catch((err) => {
+          pendingSSE.delete(callId);
+          reject(err);
+        });
+
+      req.signal.addEventListener("abort", () => {
+        pendingSSE.delete(callId);
+        reject(new Error("aborted"));
+      });
     });
 
-    return new Response(stream, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-      },
-    });
+    return Response.json({ response });
   }
 
   return new Response("not found", { status: 404 });
