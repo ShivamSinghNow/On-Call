@@ -1,4 +1,5 @@
 import Fastify from "fastify";
+import FastifyWebSocket from "@fastify/websocket";
 import { AskRequestSchema } from "@voice-bridge/shared";
 import { loadConfig } from "./config.js";
 import { createLogger } from "./logger.js";
@@ -12,6 +13,19 @@ const startedAt = Date.now();
 const inflight = new Map<string, AbortController>();
 
 const app = Fastify({ loggerInstance: log, disableRequestLogging: true });
+await app.register(FastifyWebSocket);
+
+// iOS persistent WebSocket for callback notifications
+let iosWs: import("ws").WebSocket | null = null;
+
+app.get("/ios/stream", { websocket: true }, (socket) => {
+  iosWs = socket;
+  log.info("ios: connected");
+  socket.on("close", () => {
+    iosWs = null;
+    log.info("ios: disconnected");
+  });
+});
 
 app.addHook("onRequest", async (req, reply) => {
   const url = req.raw.url ?? "";
