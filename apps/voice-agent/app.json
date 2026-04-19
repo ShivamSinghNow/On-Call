@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "On-Call Voice Agent",
+    "slug": "on-call-voice-agent",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "bundleIdentifier": "com.oncall.voiceagent",
+      "supportsTablet": true,
+      "infoPlist": {
+        "UIBackgroundModes": ["audio", "voip"],
+        "NSMicrophoneUsageDescription": "Required to host the on-device Gemma 4 voice agent."
+      }
+    },
+    "android": {
+      "package": "com.oncall.voiceagent",
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.WAKE_LOCK",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MICROPHONE",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "plugins": ["expo-keep-awake"],
+    "extra": {
+      "bridgeWsUrl": "${EXPO_PUBLIC_BRIDGE_WS_URL}",
+      "agentAuthToken": "${EXPO_PUBLIC_AGENT_AUTH_TOKEN}",
+      "gemmaModelPath": "${EXPO_PUBLIC_GEMMA_MODEL_PATH}",
+      "gemmaMmprojPath": "${EXPO_PUBLIC_GEMMA_MMPROJ_PATH}"
+    }
+  }
+}

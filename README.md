@@ -1,164 +1,76 @@
-# Voice Bridge
+# On-Call
 
-A React Native app that lets you talk to your existing Telegram ↔ Claude Code
-session with your voice. Speech-to-text runs on-device via `cactus-react-native`
-(Gemma/Whisper/Moonshine). The reply is read back through the phone's built-in
-TTS. A thin Node bridge owns the Telegram bot token and brokers requests.
+Hands-free Claude Code via phone. Call a Twilio number from anywhere → Gemma 4 (E2B) running on-device via Cactus screens the request and asks any clarifying questions → the cleaned-up prompt is forwarded to your Claude Code session through Telegram → Claude's answer is spoken back via Polly TTS.
+
+See [`plan.md`](./plan.md) for the full architecture and roadmap.
+
+## Repo layout
 
 ```
-phone mic -> CactusSTT (on-device) -> Node bridge -> existing Telegram/Claude bot
-                                                            |
-              phone speaker <- expo-speech TTS <-----------+
+.
+├── apps/
+│   ├── bridge/        # Node.js orchestrator (Fastify + WebSocket)
+│   └── voice-agent/   # React Native (Expo) headless app hosting Cactus + Gemma 4
+└── packages/
+    └── shared/        # WS protocol types, mulaw decoding, VAD helpers
 ```
 
-No Twilio. No phone numbers. No cloud inference. The phone is the phone.
+## Quick start
 
----
+### Prereqs
 
-## Layout
+- Node.js ≥ 20.10
+- pnpm ≥ 9
+- A Twilio account with a phone number
+- A Telegram bot already connected to your Claude Code session
+- An iPhone / iPad / Android phone / Apple Silicon Mac to run the voice-agent app
+- An ngrok-style HTTPS tunnel for local bridge development
 
-| Path | What |
-|------|------|
-| `apps/mobile/` | Expo + React Native app (push-to-talk UI, STT, TTS, SSE client) |
-| `apps/bridge/` | Fastify bridge: `POST /ask` streams Claude's reply as SSE |
-| `apps/bridge/src/mock-bot.ts` | Stand-in for the existing bot, for local smoke tests |
-| `apps/bridge/docs/existing-bot-integration.md` | The one endpoint you add to the real bot |
-| `packages/shared/` | Shared Zod schemas and types |
-
----
-
-## First-time setup
+### Install
 
 ```bash
 pnpm install
-cp .env.example .env        # then edit values (see below)
-pnpm --filter @voice-bridge/shared build
-pnpm --filter @voice-bridge/bridge build
+cp .env.example .env
+# Fill in TWILIO_*, TELEGRAM_*, AGENT_AUTH_TOKEN
 ```
 
-Minimum `.env` keys:
-
-```
-BRIDGE_PORT=4000
-BRIDGE_TOKEN=<pick something>
-CLAUDE_BRIDGE_MODE=local
-CLAUDE_LOCAL_URL=http://127.0.0.1:5055/internal/ask   # real bot, or the mock
-EXPO_PUBLIC_BRIDGE_URL=http://<your-LAN-ip>:4000
-EXPO_PUBLIC_BRIDGE_TOKEN=<same as BRIDGE_TOKEN>
-```
-
-`EXPO_PUBLIC_BRIDGE_URL` must be reachable **from the phone** — use your dev
-machine's LAN IP (`ipconfig getifaddr en0` on macOS), not `localhost`.
-
----
-
-## Wiring the existing Claude Code bot
-
-Add one HTTP endpoint to the existing Telegram bot process so the bridge can
-call the same function the bot already uses to reach Claude Code. See
-[apps/bridge/docs/existing-bot-integration.md](apps/bridge/docs/existing-bot-integration.md)
-for drop-in snippets (JSON and streaming SSE, Node and Python).
-
-Until that endpoint exists you can run everything against the bundled mock bot
-(see smoke tests below).
-
----
-
-## Running the MVP
-
-Three terminals. Two of these are only for local testing; swap in the real bot
-when ready.
+### Run the bridge (dev)
 
 ```bash
-# Terminal 1 — mock bot (skip in production; point bridge at the real one)
-pnpm --filter @voice-bridge/bridge mock-bot
-# "mock bot listening"
-
-# Terminal 2 — bridge
-pnpm bridge
-# "voice-bridge listening  port: 4000  mode: local"
-
-# Terminal 3 — mobile app
-pnpm mobile
-# Scan the QR with Expo Go OR `i` / `a` for simulator.
+pnpm dev:bridge
+# In another terminal:
+ngrok http 3000
+# Paste the ngrok URL into your Twilio number's voice webhook:
+#   https://<ngrok>/twilio/voice
 ```
 
-On first launch the app downloads the Moonshine-Base STT model from Hugging
-Face (~60 MB). A progress percentage is shown. After that, STT is fully offline.
-
-To run on a **real device** you need a dev build rather than Expo Go, because
-`cactus-react-native` is a native module:
+### Run the voice agent (dev)
 
 ```bash
-cd apps/mobile
-npx expo prebuild            # generates ios/ and android/ (first time)
-npx expo run:ios             # or run:android
+cd apps/voice-agent
+pnpm install
+pnpm prebuild         # Generates ios/ and android/ projects (Cactus needs native modules)
+pnpm ios              # or `pnpm android`
 ```
 
----
+The first launch will prompt the app to download Gemma 4 weights via Cactus (~1-2 GB depending on quantization). After that, the app holds a persistent WebSocket to the bridge and processes audio chunks on-device.
 
-## The four MVP smoke tests
+### Smoke test
 
-### 1. On-device transcription
+1. Confirm the bridge is up: `curl https://<ngrok>/healthz` → `{ "ok": true }`.
+2. Confirm the voice agent app shows "Connected to bridge" on its debug screen.
+3. Call your Twilio number. You should hear the Polly greeting, then be able to speak a coding question.
 
-Open the app on a device, hold the talk button, say "hello world", release.
-Look at the Metro/Expo console for a log line with the transcribed text.
-Requires the Moonshine model to have finished downloading.
-
-### 2. Bridge SSE round-trip (no phone needed)
-
-With the mock bot and bridge running from the commands above:
+## Scripts
 
 ```bash
-curl -N -X POST http://127.0.0.1:4000/ask \
-  -H 'content-type: application/json' \
-  -H "x-bridge-token: $BRIDGE_TOKEN" \
-  -d '{"callId":"t1","text":"hi"}'
+pnpm typecheck   # Run tsc --noEmit across all packages
+pnpm test        # Run unit tests
+pnpm build       # Build all packages
 ```
 
-Expected: a series of `event: token` lines followed by `event: done`.
+## Configuration
 
-### 3. End-to-end on a real device
+All bridge configuration is via environment variables — see [`.env.example`](./.env.example) for the full list.
 
-With the bridge pointed at the **real** bot and the app installed on a device
-on the same LAN:
-
-- Hold the talk button, ask a short coding question.
-- Release. Watch the button turn blue, then see the transcript appear, then
-  hear Claude's answer read aloud sentence-by-sentence.
-
-### 4. Concurrency / no cross-talk
-
-With the bridge running (mock or real), run two streams in parallel:
-
-```bash
-( curl -sN -X POST :4000/ask -H 'x-bridge-token: '"$BRIDGE_TOKEN" \
-    -H 'content-type: application/json' \
-    -d '{"callId":"A","text":"one"}' | sed 's/^/[A] /' ) &
-( curl -sN -X POST :4000/ask -H 'x-bridge-token: '"$BRIDGE_TOKEN" \
-    -H 'content-type: application/json' \
-    -d '{"callId":"B","text":"two"}' | sed 's/^/[B] /' ) &
-wait
-```
-
-Expected: `[A]` tokens only reference "one", `[B]` tokens only reference
-"two". The bridge returns **409** if you reuse an in-flight `callId`.
-
----
-
-## Explicit non-goals in this MVP
-
-- No Twilio / phone numbers (tracked in the plan as a future adapter).
-- No auth beyond a shared `x-bridge-token` header; bind the bridge to
-  `127.0.0.1` or a VPN in production.
-- One Claude Code session per bridge instance; no multi-user routing.
-- Push-to-talk only — no streaming STT, no barge-in.
-- Native platform TTS (`expo-speech`). Gemma TTS can drop in behind
-  [apps/mobile/src/tts.ts](apps/mobile/src/tts.ts) without touching the UI.
-
----
-
-## Plan reference
-
-The original plan lives at `.cursor/plans/voice_bridge_rn_mvp_*.plan.md`. Every
-file in this repo implements a specific todo from that plan.
+Voice-agent configuration (WebSocket URL, model slug) is via `EXPO_PUBLIC_*` vars baked at build time. Override per-environment by passing `--env-file` or using `eas.json` for production builds.

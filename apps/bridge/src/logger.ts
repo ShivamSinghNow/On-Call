@@ -1,18 +1,17 @@
-import pino from "pino";
-import type { Config } from "./config.js";
+import { pino } from 'pino';
+import { loadConfig } from './config.js';
 
-export function createLogger(config: Config) {
-  const isDev = process.env.NODE_ENV !== "production";
-  return pino({
+export type Logger = ReturnType<typeof pino>;
+
+let cached: Logger | null = null;
+
+export function getLogger(): Logger {
+  if (cached) return cached;
+  const config = loadConfig();
+  cached = pino({
     level: config.LOG_LEVEL,
-    transport: isDev
-      ? {
-          target: "pino-pretty",
-          options: { colorize: true, translateTime: "SYS:HH:MM:ss.l" },
-        }
-      : undefined,
-    base: { service: "voice-bridge" },
+    base: { service: 'on-call-bridge' },
+    timestamp: pino.stdTimeFunctions.isoTime,
   });
+  return cached;
 }
-
-export type Logger = ReturnType<typeof createLogger>;

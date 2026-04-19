@@ -1,28 +1,31 @@
 {
-  "name": "@voice-bridge/bridge",
+  "name": "@on-call/bridge",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "main": "./dist/server.js",
+  "main": "./dist/index.js",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
-    "start": "node dist/server.js",
-    "mock-bot": "node dist/mock-bot.js",
-    "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc --noEmit"
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test --import tsx 'src/**/*.test.ts'"
   },
   "dependencies": {
-    "@voice-bridge/shared": "workspace:*",
-    "dotenv": "^16.4.5",
-    "fastify": "^5.1.0",
-    "pino": "^9.5.0",
-    "pino-pretty": "^11.3.0",
-    "undici": "^6.20.1",
+    "@fastify/formbody": "^8.0.1",
+    "@fastify/websocket": "^11.0.1",
+    "@on-call/shared": "workspace:*",
+    "fastify": "^5.0.0",
+    "pino": "^9.4.0",
+    "telegraf": "^4.16.3",
+    "twilio": "^5.3.4",
+    "ws": "^8.18.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@types/node": "^22.8.7",
-    "tsx": "^4.19.2",
+    "@types/node": "^20.16.10",
+    "@types/ws": "^8.5.12",
+    "tsx": "^4.19.1",
     "typescript": "^5.6.3"
   }
 }

@@ -1,14 +1,20 @@
 {
-  "name": "voice-bridge",
-  "version": "0.1.0",
+  "name": "on-call",
   "private": true,
-  "description": "Voice Bridge MVP: React Native app -> on-device Cactus/Gemma STT -> Node bridge -> Telegram/Claude Code -> on-device TTS",
+  "version": "0.1.0",
+  "description": "Hands-free Claude Code via phone. Twilio + on-device Gemma 4 (Cactus) + Telegram bridge.",
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=20.10.0"
+  },
   "scripts": {
-    "bridge": "pnpm --filter @voice-bridge/bridge dev",
-    "mobile": "pnpm --filter @voice-bridge/mobile start",
-    "build": "pnpm -r build",
-    "typecheck": "pnpm -r typecheck",
-    "lint": "pnpm -r lint"
+    "build": "pnpm -r --parallel build",
+    "typecheck": "pnpm -r --parallel typecheck",
+    "test": "pnpm -r --parallel test",
+    "lint": "pnpm -r --parallel lint",
+    "dev:bridge": "pnpm --filter @on-call/bridge dev",
+    "dev:agent": "pnpm --filter @on-call/voice-agent start",
+    "clean": "pnpm -r exec rm -rf dist node_modules .turbo"
   },
   "devDependencies": {
     "typescript": "^5.6.3"
