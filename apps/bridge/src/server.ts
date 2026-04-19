@@ -18,8 +18,8 @@ await app.register(FastifyWebSocket);
 // iOS persistent WebSocket for callback notifications
 let iosWs: import("ws").WebSocket | null = null;
 
-app.get("/ios/stream", { websocket: true }, (socket) => {
-  iosWs = socket;
+app.get("/ios/stream", { websocket: true }, (socket, _req) => {
+  iosWs = socket as unknown as import("ws").WebSocket;
   log.info("ios: connected");
   socket.on("close", () => {
     iosWs = null;
@@ -29,7 +29,7 @@ app.get("/ios/stream", { websocket: true }, (socket) => {
 
 app.addHook("onRequest", async (req, reply) => {
   const url = req.raw.url ?? "";
-  if (url === "/health") return;
+  if (url === "/health" || url === "/ios/stream") return;
   const token = req.headers["x-bridge-token"];
   if (token !== config.BRIDGE_TOKEN) {
     log.warn({ url, ip: req.ip }, "rejected: bad bridge token");
